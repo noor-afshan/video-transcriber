@@ -62,3 +62,7 @@ config.json               # Settings (HF token, model, cleanup options)
 ## User Guide
 
 See `video-audio-capture.md` for full usage documentation including OBS setup, CLI options, troubleshooting, and workflow.
+
+## Claude Behavior Rules
+
+- **Plan approval ≠ execution**: When a plan is approved, do NOT automatically start implementing. Wait for explicit instruction to proceed with implementation.
