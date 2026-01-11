@@ -38,6 +38,10 @@ class Diarizer:
                 "3. Set HF_TOKEN environment variable or pass hf_token parameter"
             )
 
+    def __repr__(self) -> str:
+        """Safe representation that doesn't expose the token."""
+        return f"Diarizer(hf_token='***', min_speakers={self.min_speakers}, max_speakers={self.max_speakers})"
+
     def _load_pipeline(self):
         """Lazy-load the pyannote pipeline."""
         if self._pipeline is None:
@@ -49,7 +53,7 @@ class Diarizer:
             print("Loading speaker diarization model...")
             self._pipeline = Pipeline.from_pretrained(
                 "pyannote/speaker-diarization-3.1",
-                use_auth_token=self.hf_token
+                token=self.hf_token  # 'use_auth_token' is deprecated
             )
         return self._pipeline
 

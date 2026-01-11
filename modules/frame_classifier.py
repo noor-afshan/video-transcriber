@@ -37,6 +37,10 @@ Reply with one word: CONTENT or DISCARD"""
 
         self.client = genai.Client(api_key=self.api_key)
 
+    def __repr__(self) -> str:
+        """Safe representation that doesn't expose the API key."""
+        return "FrameClassifier(api_key='***')"
+
     def classify_frame(self, image_path: Path) -> str:
         """
         Classify a single frame.

@@ -17,9 +17,42 @@ class TranscriptSegment:
     text: str
 
 
-# Default whisper.cpp paths
-WHISPER_CPP_EXE = Path(r"C:\Users\piers\OneDrive\Projects\whisper.cpp\build_sycl\bin\whisper-cli.exe")
-WHISPER_CPP_MODELS = Path(r"C:\Users\piers\OneDrive\Projects\whisper.cpp\models")
+# Default whisper.cpp paths (fallbacks if not configured)
+_DEFAULT_WHISPER_EXE = Path(r"C:\whisper.cpp\bin\whisper-cli.exe")
+_DEFAULT_WHISPER_MODELS = Path(r"C:\whisper.cpp\models")
+_DEFAULT_ONEAPI_BIN = r"C:\Program Files (x86)\Intel\oneAPI"
+
+
+def _resolve_path(config_value: str | Path | None, env_var: str, default: Path) -> Path:
+    """Resolve path from config, environment variable, or default."""
+    if config_value:
+        return Path(config_value)
+    env_value = os.environ.get(env_var)
+    if env_value:
+        return Path(env_value)
+    return default
+
+
+def _find_oneapi_bin(config_value: str | None) -> str | None:
+    """Find Intel oneAPI bin directory, auto-detecting version if needed."""
+    if config_value and os.path.exists(config_value):
+        return config_value
+
+    env_value = os.environ.get("ONEAPI_BIN")
+    if env_value and os.path.exists(env_value):
+        return env_value
+
+    # Auto-detect latest version
+    oneapi_base = Path(_DEFAULT_ONEAPI_BIN)
+    if oneapi_base.exists():
+        # Find latest version directory
+        versions = sorted(
+            [d for d in oneapi_base.iterdir() if d.is_dir() and (d / "bin").exists()],
+            reverse=True
+        )
+        if versions:
+            return str(versions[0] / "bin")
+    return None
 
 # Model mapping: script model names -> whisper.cpp model files
 WHISPER_CPP_MODEL_MAP = {
@@ -32,9 +65,51 @@ WHISPER_CPP_MODEL_MAP = {
 }
 
 
-def is_gpu_available() -> bool:
+# Allowed audio/video extensions for transcription
+ALLOWED_EXTENSIONS = {
+    ".mp4", ".mkv", ".avi", ".mov", ".webm",  # video
+    ".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac",  # audio
+}
+
+
+def _validate_audio_path(audio_path: Path) -> Path:
+    """Validate and canonicalize audio path for subprocess calls."""
+    # Resolve to absolute path
+    audio_path = audio_path.resolve()
+
+    if not audio_path.exists():
+        raise FileNotFoundError(f"File not found: {audio_path}")
+
+    if not audio_path.is_file():
+        raise ValueError(f"Path is not a file: {audio_path}")
+
+    if audio_path.suffix.lower() not in ALLOWED_EXTENSIONS:
+        raise ValueError(
+            f"Unsupported file type: {audio_path.suffix}\n"
+            f"Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+        )
+
+    return audio_path
+
+
+def check_ffmpeg() -> bool:
+    """Check if ffmpeg is available in PATH."""
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        return result.returncode == 0
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return False
+
+
+def is_gpu_available(whisper_exe: str | Path | None = None) -> bool:
     """Check if whisper.cpp GPU backend is available."""
-    return WHISPER_CPP_EXE.exists()
+    exe_path = _resolve_path(whisper_exe, "WHISPER_CPP_EXE", _DEFAULT_WHISPER_EXE)
+    return exe_path.exists()
 
 
 class GpuTranscriber:
@@ -42,13 +117,23 @@ class GpuTranscriber:
 
     VALID_MODELS = ["tiny", "base", "small", "medium", "large-v3", "turbo"]
 
-    def __init__(self, model_size: str = "large-v3"):
+    def __init__(
+        self,
+        model_size: str = "large-v3",
+        whisper_exe: str | Path | None = None,
+        models_dir: str | Path | None = None,
+        oneapi_bin: str | None = None,
+    ):
         if model_size not in self.VALID_MODELS:
             raise ValueError(f"Invalid model: {model_size}. Valid: {self.VALID_MODELS}")
 
         self.model_size = model_size
+        self.whisper_exe = _resolve_path(whisper_exe, "WHISPER_CPP_EXE", _DEFAULT_WHISPER_EXE)
+        self.models_dir = _resolve_path(models_dir, "WHISPER_CPP_MODELS", _DEFAULT_WHISPER_MODELS)
+        self.oneapi_bin = _find_oneapi_bin(oneapi_bin)
+
         self.model_file = WHISPER_CPP_MODEL_MAP.get(model_size, "ggml-large-v3-turbo.bin")
-        self.model_path = WHISPER_CPP_MODELS / self.model_file
+        self.model_path = self.models_dir / self.model_file
 
         if not self.model_path.exists():
             raise FileNotFoundError(
@@ -110,69 +195,78 @@ class GpuTranscriber:
     def transcribe(self, audio_path: str | Path, language: str = "en",
                    show_progress: bool = True, debug: bool = False) -> Iterator[TranscriptSegment]:
         """Transcribe using whisper.cpp GPU backend."""
-        audio_path = Path(audio_path)
-        if not audio_path.exists():
-            raise FileNotFoundError(f"File not found: {audio_path}")
+        # Validate and canonicalize path
+        audio_path = _validate_audio_path(Path(audio_path))
+
+        # Pre-flight check: verify ffmpeg is available (needed for WAV conversion)
+        if audio_path.suffix.lower() != ".wav" and not check_ffmpeg():
+            raise RuntimeError(
+                "ffmpeg not found in PATH. Please install ffmpeg:\n"
+                "  Windows: winget install ffmpeg\n"
+                "  Or download from: https://ffmpeg.org/download.html"
+            )
 
         # Convert to WAV if needed
         wav_path = self._convert_to_wav(audio_path)
+        temp_wav_created = wav_path != audio_path
 
-        print(f"Transcribing with GPU (whisper.cpp): {audio_path.name}")
-        print(f"Model: {self.model_file}")
-        if show_progress:
-            print("Streaming transcription...\n")
-        else:
-            print("Processing (output hidden)...\n")
+        try:
+            print(f"Transcribing with GPU (whisper.cpp): {audio_path.name}")
+            print(f"Model: {self.model_file}")
+            if show_progress:
+                print("Streaming transcription...\n")
+            else:
+                print("Processing (output hidden)...\n")
 
-        # Set environment for Intel GPU
-        env = os.environ.copy()
-        env["GGML_SYCL_DEVICE"] = "0"
+            # Set environment for Intel GPU
+            env = os.environ.copy()
+            env["GGML_SYCL_DEVICE"] = "0"
 
-        # Add Intel oneAPI bin to PATH for required DLLs (svml_dispmd.dll, etc.)
-        oneapi_bin = r"C:\Program Files (x86)\Intel\oneAPI\2025.3\bin"
-        if os.path.exists(oneapi_bin):
-            env["PATH"] = oneapi_bin + os.pathsep + env.get("PATH", "")
+            # Add Intel oneAPI bin to PATH for required DLLs (svml_dispmd.dll, etc.)
+            if self.oneapi_bin:
+                env["PATH"] = self.oneapi_bin + os.pathsep + env.get("PATH", "")
 
-        cmd = [
-            str(WHISPER_CPP_EXE),
-            "-m", str(self.model_path),
-            "-f", str(wav_path),
-            "-l", language or "en",
-        ]
+            cmd = [
+                str(self.whisper_exe),
+                "-m", str(self.model_path),
+                "-f", str(wav_path),
+                "-l", language or "en",
+            ]
 
-        # Stream output in real-time while capturing for parsing
-        output_lines = []
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            env=env,
-            bufsize=1
-        )
+            # Stream output in real-time while capturing for parsing
+            output_lines = []
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                env=env,
+                bufsize=1
+            )
 
-        for line in process.stdout:
-            output_lines.append(line)
-            # Filter output based on flags
-            if debug:
-                # Show everything
-                print(line, end='', flush=True)
-            elif show_progress and self._is_transcript_line(line):
-                # Show only transcript lines
-                print(line, end='', flush=True)
+            for line in process.stdout:
+                output_lines.append(line)
+                # Filter output based on flags
+                if debug:
+                    # Show everything
+                    print(line, end='', flush=True)
+                elif show_progress and self._is_transcript_line(line):
+                    # Show only transcript lines
+                    print(line, end='', flush=True)
 
-        process.wait()
+            process.wait()
 
-        # Clean up temp WAV if created
-        if wav_path != audio_path and wav_path.exists():
-            wav_path.unlink()
+            if process.returncode != 0:
+                raise RuntimeError(f"whisper.cpp failed with return code {process.returncode}")
 
-        if process.returncode != 0:
-            raise RuntimeError(f"whisper.cpp failed with return code {process.returncode}")
+            segments = self._parse_output(''.join(output_lines))
+            for segment in segments:
+                yield segment
 
-        segments = self._parse_output(''.join(output_lines))
-        for segment in segments:
-            yield segment
+        finally:
+            # Clean up temp WAV file (guaranteed even on error)
+            if temp_wav_created and wav_path.exists():
+                wav_path.unlink()
 
     def transcribe_to_list(self, audio_path: str | Path, language: str = "en",
                            show_progress: bool = True, debug: bool = False) -> list[TranscriptSegment]:
@@ -227,9 +321,8 @@ class Transcriber:
         Yields:
             TranscriptSegment objects with timing and text
         """
-        audio_path = Path(audio_path)
-        if not audio_path.exists():
-            raise FileNotFoundError(f"File not found: {audio_path}")
+        # Validate and canonicalize path
+        audio_path = _validate_audio_path(Path(audio_path))
 
         model = self._load_model()
 

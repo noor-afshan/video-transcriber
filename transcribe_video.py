@@ -1,20 +1,32 @@
 """
-Meeting Transcription Script with Speaker Diarization
+Video Transcription Script with Speaker Diarization
 Transcribes audio/video files locally with optional speaker identification.
 Uses GPU acceleration (Intel Arc) by default for ~3x faster transcription.
 
 Usage:
-    python transcribe_meeting.py "path/to/recording.mp4"
-    python transcribe_meeting.py "path/to/recording.mp4" --no-diarize
-    python transcribe_meeting.py "path/to/recording.mp4" --model medium
-    python transcribe_meeting.py "path/to/recording.mp4" --cpu
+    python transcribe_video.py "path/to/recording.mp4"
+    python transcribe_video.py "path/to/recording.mp4" --no-diarize
+    python transcribe_video.py "path/to/recording.mp4" --model medium
+    python transcribe_video.py "path/to/recording.mp4" --cpu
 """
 
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
+
+
+def _sanitize_filename(name: str) -> str:
+    """Sanitize filename to prevent OS errors and path traversal."""
+    # Remove/replace characters that are problematic on Windows
+    # Reserved: < > : " / \ | ? *
+    sanitized = re.sub(r'[<>:"/\\|?*]', '_', name)
+    # Remove leading/trailing spaces and dots
+    sanitized = sanitized.strip(' .')
+    # Handle empty result
+    return sanitized or "transcript"
 
 
 def load_config(config_path: str = None) -> dict:
@@ -58,14 +70,6 @@ def load_config(config_path: str = None) -> dict:
     return default_config
 
 
-def format_time(seconds: float) -> str:
-    """Convert seconds to HH:MM:SS format."""
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    secs = int(seconds % 60)
-    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
-
-
 def transcribe_meeting(
     audio_path: str,
     model_size: str = "large-v3",
@@ -92,7 +96,7 @@ def transcribe_meeting(
     Returns:
         Full transcript text
     """
-    from modules.transcriber import Transcriber, GpuTranscriber, is_gpu_available
+    from modules.transcriber import Transcriber, GpuTranscriber, is_gpu_available, format_time
     from modules.cleaner import TranscriptCleaner
 
     config = config or {}
@@ -102,10 +106,21 @@ def transcribe_meeting(
         print(f"ERROR: File not found: {audio_path}")
         sys.exit(1)
 
+    # Extract path configuration
+    paths_config = config.get("paths", {})
+    whisper_exe = paths_config.get("whisper_cpp_exe")
+    models_dir = paths_config.get("whisper_cpp_models")
+    oneapi_bin = paths_config.get("oneapi_bin")
+
     # Step 1: Transcribe (GPU default, fallback to CPU)
-    if not use_cpu and is_gpu_available():
+    if not use_cpu and is_gpu_available(whisper_exe):
         try:
-            transcriber = GpuTranscriber(model_size=model_size)
+            transcriber = GpuTranscriber(
+                model_size=model_size,
+                whisper_exe=whisper_exe,
+                models_dir=models_dir,
+                oneapi_bin=oneapi_bin,
+            )
             transcript_segments = transcriber.transcribe_to_list(
                 audio_path, show_progress=show_progress, debug=debug
             )
@@ -146,7 +161,6 @@ def transcribe_meeting(
 
     # Step 3: Merge transcription with speakers
     if enable_diarization and speaker_segments:
-        from modules.diarizer import assign_speakers_to_transcript
         merged = assign_speakers_to_transcript(transcript_segments, speaker_segments)
     else:
         # No diarization - use "Speaker" for all
@@ -185,10 +199,14 @@ def transcribe_meeting(
         file_lines.append(f"{speaker}: {text}")
         prev_speaker = speaker
 
-    # Save to file in Captures directory
-    captures_dir = Path(r"C:\Users\piers\Videos\Captures")
-    captures_dir.mkdir(parents=True, exist_ok=True)
-    output_path = captures_dir / (audio_path.stem + ".txt")
+    # Save to file (configurable output directory, defaults to input file's directory)
+    output_dir = paths_config.get("output_dir")
+    if output_dir:
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        output_dir = audio_path.parent
+    output_path = output_dir / (_sanitize_filename(audio_path.stem) + ".txt")
     output_path.write_text("\n".join(file_lines), encoding="utf-8")
 
     print("\n" + "=" * 60)
@@ -200,14 +218,14 @@ def transcribe_meeting(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Transcribe meeting recordings with speaker identification (GPU accelerated)",
+        description="Transcribe video/audio recordings with speaker identification (GPU accelerated)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python transcribe_meeting.py "meeting.mp4"              # GPU, large-v3, with speaker ID
-  python transcribe_meeting.py "meeting.mp4" --no-diarize # Skip speaker identification
-  python transcribe_meeting.py "meeting.mp4" -m medium    # Faster, slightly less accurate
-  python transcribe_meeting.py "meeting.mp4" --cpu        # Force CPU (slower)
+  python transcribe_video.py "video.mp4"              # GPU, large-v3, with speaker ID
+  python transcribe_video.py "video.mp4" --no-diarize # Skip speaker identification
+  python transcribe_video.py "video.mp4" -m medium    # Faster, slightly less accurate
+  python transcribe_video.py "video.mp4" --cpu        # Force CPU (slower)
 
 Models:
   tiny, base     Fast but less accurate

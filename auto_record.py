@@ -163,7 +163,7 @@ class OBSController:
 def run_transcription(video_path: str, args: argparse.Namespace):
     """Run transcription on the recorded video."""
     script_dir = Path(__file__).parent
-    transcribe_script = script_dir / "transcribe_meeting.py"
+    transcribe_script = script_dir / "transcribe_video.py"
 
     if not transcribe_script.exists():
         print(f"Transcription script not found: {transcribe_script}")
@@ -198,10 +198,8 @@ def main():
         "--port", type=int, default=obs_config.get("port", 4455),
         help="OBS WebSocket port (default: from config or 4455)"
     )
-    parser.add_argument(
-        "--password", default=obs_config.get("password", ""),
-        help="OBS WebSocket password (default: from config)"
-    )
+    # NOTE: Password removed from CLI for security (visible in process listings)
+    # Use config.json or OBS_PASSWORD environment variable instead
     parser.add_argument(
         "--poll-interval", type=int, default=5,
         help="Seconds between window checks (default: 5)"
@@ -225,8 +223,11 @@ def main():
 
     args = parser.parse_args()
 
+    # Get OBS password from config or environment (not CLI for security)
+    obs_password = os.environ.get("OBS_PASSWORD") or obs_config.get("password", "")
+
     # Connect to OBS
-    controller = OBSController(args.host, args.port, args.password)
+    controller = OBSController(args.host, args.port, obs_password)
     if not controller.connect():
         sys.exit(1)
 
