@@ -23,3 +23,9 @@ summary-todo.md
 
 # Archived documentation
 docs/_archive/
+
+# Claude Code temp directories
+tmpclaude-*/
+
+# Session artifacts
+SESSION_HANDOFF.md
