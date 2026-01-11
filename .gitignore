@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Claude Code
+.claude/
+
+# Local data
+data/
+logs/
+nul
+
+# Sensitive config (contains OBS password, HF token)
+config.json
+
+# Local Windows automation
+*.reg
+*.vbs
+
+# Personal notes
+summary-todo.md
