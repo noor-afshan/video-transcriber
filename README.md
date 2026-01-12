@@ -21,7 +21,7 @@
 - **Hallucination Cleanup** - Automatic removal of common Whisper artifacts and duplicates
 - **Frame Extraction** - Extract key frames from videos with perceptual hash deduplication
 - **AI Smart Filtering** - Remove non-content frames (talking heads, title cards) using Gemini API
-- **OBS Integration** - Auto-record workflow for capturing video meetings
+- **OBS Integration** - Auto-record workflow for capturing video content
 - **Windows Context Menu** - Right-click any video to transcribe or extract frames
 
 ## Quick Start

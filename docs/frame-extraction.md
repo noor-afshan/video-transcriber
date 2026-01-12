@@ -56,7 +56,7 @@ python extract_frames.py "video.mp4" --fps 1/5
 
 ## Deduplication
 
-Meetings often have static screens (same slide for minutes). Deduplication uses perceptual hashing to detect and remove visually identical frames.
+Videos often have static screens (same slide for minutes). Deduplication uses perceptual hashing to detect and remove visually identical frames.
 
 ### How It Works
 
@@ -130,7 +130,7 @@ python dedupe_frames.py frames/ --dry-run
 ## Example Output
 
 ```
-Extracting frames from: meeting-recording.mp4
+Extracting frames from: recording.mp4
 Output directory: C:\Users\piers\Videos\frames
 Frame rate: 1 fps
 

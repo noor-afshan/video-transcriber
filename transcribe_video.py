@@ -70,7 +70,7 @@ def load_config(config_path: str = None) -> dict:
     return default_config
 
 
-def transcribe_meeting(
+def transcribe_video(
     audio_path: str,
     model_size: str = "large-v3",
     enable_diarization: bool = True,
@@ -81,7 +81,7 @@ def transcribe_meeting(
     config: dict = None,
 ) -> str:
     """
-    Transcribe a meeting recording with optional speaker diarization.
+    Transcribe a video/audio recording with optional speaker diarization.
 
     Args:
         audio_path: Path to audio/video file
@@ -285,7 +285,7 @@ Backend:
     # CLI args override config
     model = args.model or config.get("model", "large-v3")
 
-    transcribe_meeting(
+    transcribe_video(
         audio_path=args.audio_file,
         model_size=model,
         enable_diarization=not args.no_diarize,

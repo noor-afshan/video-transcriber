@@ -1,4 +1,4 @@
-"""Transcription modules for meeting transcription with speaker diarization."""
+"""Transcription modules for video transcription with speaker diarization."""
 
 from .transcriber import Transcriber
 from .diarizer import Diarizer

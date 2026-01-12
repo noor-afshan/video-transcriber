@@ -120,10 +120,10 @@ Default threshold is 5. If you see near-duplicate frames that only differ by spe
 
 ### Auto-Record Not Starting
 
-**Symptoms:** Recording doesn't start when meeting begins
+**Symptoms:** Recording doesn't start when video call begins
 
 **Solutions:**
-1. Ensure OBS is running before the meeting starts
+1. Ensure OBS is running before the video call starts
 2. Check OBS WebSocket is enabled:
    - OBS → Tools → WebSocket Server Settings
    - Check "Enable WebSocket Server"
@@ -141,12 +141,12 @@ Default threshold is 5. If you see near-duplicate frames that only differ by spe
    python auto_record.py
    ```
 
-### Auto-Record Not Detecting Meeting
+### Auto-Record Not Detecting Video Call
 
-**Symptoms:** Meeting window not detected
+**Symptoms:** Video call window not detected
 
 **Solutions:**
-1. Meeting window must contain "Meeting with" or "| Microsoft Teams"
+1. Window title must contain "Meeting with" or "| Microsoft Teams"
 2. Use faster polling:
    ```powershell
    python auto_record.py --poll-interval 2
@@ -159,7 +159,7 @@ Default threshold is 5. If you see near-duplicate frames that only differ by spe
 
 **Possible causes:**
 - **Test call:** Expected - Teams plays your voice back
-- **Real meeting:** Check OBS Audio Mixer - you may be capturing mic twice
+- **Real call:** Check OBS Audio Mixer - you may be capturing mic twice
 
 ### Audio Not Recording
 
