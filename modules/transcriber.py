@@ -147,8 +147,10 @@ class GpuTranscriber:
         if audio_path.suffix.lower() == ".wav":
             return audio_path
 
-        # Create temp WAV file
-        wav_path = Path(tempfile.gettempdir()) / f"{audio_path.stem}_whisper.wav"
+        # Create secure temp WAV file (unpredictable name, proper permissions)
+        fd, wav_path_str = tempfile.mkstemp(suffix='.wav', prefix='whisper_')
+        os.close(fd)  # Close the file descriptor; ffmpeg will write to this path
+        wav_path = Path(wav_path_str)
 
         print(f"Converting to WAV format...")
         cmd = [
@@ -159,6 +161,9 @@ class GpuTranscriber:
 
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
+            # Clean up temp file on failure
+            if wav_path.exists():
+                wav_path.unlink()
             raise RuntimeError(f"FFmpeg conversion failed: {result.stderr}")
 
         return wav_path

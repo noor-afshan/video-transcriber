@@ -1,11 +1,33 @@
 """Frame classification module using Gemini vision."""
 
 import os
+import time
 from pathlib import Path
 from typing import Callable
 
 from google import genai
 from PIL import Image
+
+
+class RateLimiter:
+    """Simple rate limiter to prevent API quota exhaustion."""
+
+    def __init__(self, requests_per_minute: int = 30):
+        """
+        Initialize rate limiter.
+
+        Args:
+            requests_per_minute: Maximum requests allowed per minute (default: 30)
+        """
+        self.min_interval = 60.0 / requests_per_minute
+        self.last_request_time = 0.0
+
+    def wait(self):
+        """Wait if necessary to respect rate limit."""
+        elapsed = time.time() - self.last_request_time
+        if elapsed < self.min_interval:
+            time.sleep(self.min_interval - elapsed)
+        self.last_request_time = time.time()
 
 
 class FrameClassifier:
@@ -36,6 +58,7 @@ Reply with one word: CONTENT or DISCARD"""
             )
 
         self.client = genai.Client(api_key=self.api_key)
+        self.rate_limiter = RateLimiter(requests_per_minute=30)
 
     def __repr__(self) -> str:
         """Safe representation that doesn't expose the API key."""
@@ -94,6 +117,8 @@ Reply with one word: CONTENT or DISCARD"""
         person_frames = []
 
         for i, frame in enumerate(frames):
+            # Rate limit API calls to prevent quota exhaustion
+            self.rate_limiter.wait()
             result = self.classify_frame(frame)
 
             if result == "content":

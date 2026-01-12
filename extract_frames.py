@@ -2,6 +2,7 @@
 """Extract frames from video files using ffmpeg."""
 
 import argparse
+import re
 import subprocess
 import sys
 import time
@@ -9,6 +10,42 @@ from pathlib import Path
 
 from modules.deduplicator import FrameDeduplicator
 from modules.frame_classifier import FrameClassifier
+
+
+def _validate_fps(fps: str) -> str:
+    """
+    Validate fps parameter format.
+
+    Args:
+        fps: Frame rate string (e.g., "1", "0.5", "1/2", "1/30")
+
+    Returns:
+        The validated fps string.
+
+    Raises:
+        ValueError: If fps format is invalid.
+    """
+    # Allow formats: "1", "30", "0.5", "1.5", "1/2", "1/30"
+    if not re.match(r'^(\d+(\.\d+)?|\d+/\d+)$', fps):
+        raise ValueError(
+            f"Invalid fps format: '{fps}'. "
+            f"Use integer ('1'), decimal ('0.5'), or fraction ('1/2') format."
+        )
+
+    # Check for division by zero in fractions
+    if '/' in fps:
+        num, denom = fps.split('/')
+        if int(denom) == 0:
+            raise ValueError("fps denominator cannot be zero")
+        if int(num) == 0:
+            raise ValueError("fps numerator cannot be zero")
+
+    # Check for zero/negative values in decimals
+    else:
+        if float(fps) <= 0:
+            raise ValueError("fps must be greater than zero")
+
+    return fps
 
 
 def extract_frames(
@@ -37,6 +74,9 @@ def extract_frames(
 
     if not video_path.exists():
         raise FileNotFoundError(f"Video not found: {video_path}")
+
+    # Validate fps parameter before using in subprocess
+    fps = _validate_fps(fps)
 
     # Default output directory: {video_name}-frames/ next to the video
     if output_dir is None:
