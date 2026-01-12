@@ -116,43 +116,6 @@ python extract_frames.py video.mp4 --threshold 10
 
 Default threshold is 5. If you see near-duplicate frames that only differ by speaker expression, try `--threshold 3`.
 
-## OBS Integration Issues
-
-### Auto-Record Not Starting
-
-**Symptoms:** Recording doesn't start when video call begins
-
-**Solutions:**
-1. Ensure OBS is running before the video call starts
-2. Check OBS WebSocket is enabled:
-   - OBS → Tools → WebSocket Server Settings
-   - Check "Enable WebSocket Server"
-3. Verify config.json matches OBS WebSocket settings:
-   ```json
-   {
-     "obs": {
-       "host": "localhost",
-       "port": 4455
-     }
-   }
-   ```
-4. Run manually to see error messages:
-   ```powershell
-   python auto_record.py
-   ```
-
-### Auto-Record Not Detecting Video Call
-
-**Symptoms:** Video call window not detected
-
-**Solutions:**
-1. Window title must contain "Meeting with" or "| Microsoft Teams"
-2. Use faster polling:
-   ```powershell
-   python auto_record.py --poll-interval 2
-   ```
-3. Check Task Manager for `pythonw.exe` to verify script is running
-
 ## Audio Issues
 
 ### Echo in Recording

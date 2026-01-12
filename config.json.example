@@ -7,10 +7,6 @@
     "output_dir": null,
     "oneapi_bin": null
   },
-  "obs": {
-    "host": "localhost",
-    "port": 4455
-  },
   "min_speakers": 2,
   "max_speakers": 6,
   "cleanup": {

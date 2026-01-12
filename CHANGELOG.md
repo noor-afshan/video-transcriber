@@ -16,7 +16,6 @@ A local video transcription tool with speaker identification - all processing ha
 
 ### Utilities
 
-- **Auto Recording**: Automated capture workflow integration
 - **Frame Extraction**: Extract key frames from videos
 - **Frame Deduplication**: Remove duplicate/similar frames intelligently
 - **Frame Classification**: Categorize extracted frames

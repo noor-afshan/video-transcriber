@@ -21,7 +21,7 @@
 - **Hallucination Cleanup** - Automatic removal of common Whisper artifacts and duplicates
 - **Frame Extraction** - Extract key frames from videos with perceptual hash deduplication
 - **AI Smart Filtering** - Remove non-content frames (talking heads, title cards) using Gemini API
-- **OBS Integration** - Auto-record workflow for capturing video content
+- **OBS Integration** - Manual recording workflow for capturing video content
 - **Windows Context Menu** - Right-click any video to transcribe or extract frames
 
 ## Quick Start
@@ -81,7 +81,7 @@ python transcribe_video.py "video.mp4" --cpu
 | [Installation](docs/installation.md) | Full setup including GPU drivers and dependencies |
 | [Transcription](docs/transcription.md) | CLI options, model selection, performance tips |
 | [Frame Extraction](docs/frame-extraction.md) | Extract and filter frames with AI |
-| [OBS Integration](docs/obs-integration.md) | Auto-recording setup for video capture |
+| [OBS Integration](docs/obs-integration.md) | Recording setup for video capture |
 | [Configuration](docs/configuration.md) | Complete config.json reference |
 | [Troubleshooting](docs/troubleshooting.md) | Common issues and solutions |
 
