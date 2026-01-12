@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.1.0 - January 11, 2026
+
+### Security
+
+- **Safer file handling**: Temporary files now use unpredictable names (`mkstemp`) with guaranteed cleanup
+- **Input validation**: Frame extraction validates fps parameter before passing to ffmpeg
+- **API rate limiting**: Gemini API calls limited to 30 req/min to prevent quota exhaustion
+- **Path validation**: All file paths validated before subprocess calls
+- **Credential masking**: Sensitive tokens masked in `__repr__` methods
+
+### Removed
+
+- **OBS auto-recording**: Removed non-functional `auto_record.py` and related configuration
+- **OBS WebSocket config**: Removed `obs` section from config.json (manual recording docs retained)
+
+### Changed
+
+- **Generalized terminology**: Renamed from "meeting" to "video" throughout codebase and docs
+- **Better batch script**: Added file validation and PowerShell alternative (`transcribe.ps1`)
+
+### Documentation
+
+- Professional README with badges and quick start guide
+- Six focused user guides in `docs/` folder
+- GitHub issue and PR templates
+- Archived legacy 544-line guide to `docs/_archive/`
+
+---
+
 ## v1.0.0 - January 11, 2026
 
 ### Initial Release
