@@ -2,12 +2,12 @@
 
 # Transcribe
 
-**Local-first video transcription with GPU acceleration, speaker diarization, and AI-powered frame extraction**
+**Local video transcription with GPU acceleration, speaker diarization, and Gemini AI-powered frame extraction**
 
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
 ![Platform Windows](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white)
 ![License MIT](https://img.shields.io/badge/License-MIT-green)
-![GPU Intel Arc](https://img.shields.io/badge/GPU-Intel%20Arc-0071C5?logo=intel&logoColor=white)
+![AI Gemini](https://img.shields.io/badge/AI-Gemini-8E75B2?logo=googlegemini&logoColor=white)
 
 </div>
 
