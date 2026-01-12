@@ -68,8 +68,8 @@ python transcribe_video.py "video.mp4" --cpu
 
 **Console:**
 ```
-[00:01:23 -> 00:01:35] Speaker 1: Good morning everyone, let's get started.
-[00:01:36 -> 00:01:52] Speaker 2: Sure, I'll share my screen.
+[00:01:23 -> 00:01:35] Speaker 1: Welcome to today's presentation on cloud architecture.
+[00:01:36 -> 00:01:52] Speaker 2: Let's start with the system overview diagram.
 ```
 
 **File:** Saved to `Videos/` folder as `{filename}.txt`
