@@ -1,7 +1,13 @@
 """Transcript cleanup module for removing hallucinations and repetitions."""
 
+from __future__ import annotations
+
 import re
 from difflib import SequenceMatcher
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .types import DiarizedSegment
 
 
 class TranscriptCleaner:
@@ -63,12 +69,12 @@ class TranscriptCleaner:
         self._filler_regex = [re.compile(p, re.IGNORECASE) for p in self.FILLER_PATTERNS]
         self._hallucination_regex = [re.compile(p, re.IGNORECASE) for p in self.HALLUCINATION_PATTERNS]
 
-    def clean(self, segments: list) -> list:
+    def clean(self, segments: list[DiarizedSegment]) -> list[DiarizedSegment]:
         """
         Clean a list of transcript segments.
 
         Args:
-            segments: List of (speaker, start, end, text) tuples or TranscriptSegment objects
+            segments: List of DiarizedSegment objects (also supports legacy tuples)
 
         Returns:
             Cleaned list with artifacts removed
@@ -95,12 +101,14 @@ class TranscriptCleaner:
 
         return cleaned
 
-    def _get_text(self, segment) -> str:
-        """Extract text from segment (handles both tuples and objects)."""
+    def _get_text(self, segment: DiarizedSegment) -> str:
+        """Extract text from segment (DiarizedSegment or legacy tuple)."""
+        # DiarizedSegment or any object with .text attribute
         if hasattr(segment, "text"):
             return segment.text
+        # Legacy tuple format: (speaker, start, end, text)
         elif isinstance(segment, tuple) and len(segment) >= 4:
-            return segment[3]  # (speaker, start, end, text)
+            return segment[3]
         return str(segment)
 
     def _filter_non_english(self, segments: list) -> list:

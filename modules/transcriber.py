@@ -4,9 +4,16 @@ import os
 import re
 import subprocess
 import tempfile
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
+
+from .exceptions import (
+    AudioConversionError,
+    ModelNotFoundError,
+    WhisperError,
+)
 
 
 @dataclass
@@ -112,10 +119,53 @@ def is_gpu_available(whisper_exe: str | Path | None = None) -> bool:
     return exe_path.exists()
 
 
-class GpuTranscriber:
-    """GPU-accelerated transcription using whisper.cpp with Intel SYCL."""
+class BaseTranscriber(ABC):
+    """
+    Abstract base class for transcription backends.
+
+    Provides a common interface for GPU and CPU transcription implementations.
+    Subclasses must implement the transcribe() method.
+    """
 
     VALID_MODELS = ["tiny", "base", "small", "medium", "large-v3", "turbo"]
+
+    def __init__(self, model_size: str = "large-v3"):
+        """
+        Initialize the transcriber.
+
+        Args:
+            model_size: Whisper model size. Options: tiny, base, small, medium, large-v3, turbo
+        """
+        if model_size not in self.VALID_MODELS:
+            raise ValueError(f"Invalid model: {model_size}. Valid: {self.VALID_MODELS}")
+        self.model_size = model_size
+
+    @abstractmethod
+    def transcribe(self, audio_path: str | Path, language: str | None = None) -> Iterator[TranscriptSegment]:
+        """
+        Transcribe an audio/video file.
+
+        Args:
+            audio_path: Path to audio/video file
+            language: Language code (e.g., "en"). Auto-detected if None.
+
+        Yields:
+            TranscriptSegment objects with timing and text
+        """
+        pass
+
+    def transcribe_to_list(self, audio_path: str | Path, language: str | None = None) -> list[TranscriptSegment]:
+        """
+        Transcribe and return all segments as a list.
+
+        This is a convenience method that collects all segments from transcribe().
+        Subclasses may override for optimized implementations.
+        """
+        return list(self.transcribe(audio_path, language))
+
+
+class GpuTranscriber(BaseTranscriber):
+    """GPU-accelerated transcription using whisper.cpp with Intel SYCL."""
 
     def __init__(
         self,
@@ -124,10 +174,8 @@ class GpuTranscriber:
         models_dir: str | Path | None = None,
         oneapi_bin: str | None = None,
     ):
-        if model_size not in self.VALID_MODELS:
-            raise ValueError(f"Invalid model: {model_size}. Valid: {self.VALID_MODELS}")
+        super().__init__(model_size)
 
-        self.model_size = model_size
         self.whisper_exe = _resolve_path(whisper_exe, "WHISPER_CPP_EXE", _DEFAULT_WHISPER_EXE)
         self.models_dir = _resolve_path(models_dir, "WHISPER_CPP_MODELS", _DEFAULT_WHISPER_MODELS)
         self.oneapi_bin = _find_oneapi_bin(oneapi_bin)
@@ -136,9 +184,9 @@ class GpuTranscriber:
         self.model_path = self.models_dir / self.model_file
 
         if not self.model_path.exists():
-            raise FileNotFoundError(
-                f"Model not found: {self.model_path}\n"
-                f"Download from: https://huggingface.co/ggerganov/whisper.cpp"
+            raise ModelNotFoundError(
+                str(self.model_path),
+                "https://huggingface.co/ggerganov/whisper.cpp"
             )
 
     def _convert_to_wav(self, audio_path: Path) -> Path:
@@ -164,7 +212,7 @@ class GpuTranscriber:
             # Clean up temp file on failure
             if wav_path.exists():
                 wav_path.unlink()
-            raise RuntimeError(f"FFmpeg conversion failed: {result.stderr}")
+            raise AudioConversionError(str(audio_path), result.stderr)
 
         return wav_path
 
@@ -205,7 +253,8 @@ class GpuTranscriber:
 
         # Pre-flight check: verify ffmpeg is available (needed for WAV conversion)
         if audio_path.suffix.lower() != ".wav" and not check_ffmpeg():
-            raise RuntimeError(
+            raise AudioConversionError(
+                str(audio_path),
                 "ffmpeg not found in PATH. Please install ffmpeg:\n"
                 "  Windows: winget install ffmpeg\n"
                 "  Or download from: https://ffmpeg.org/download.html"
@@ -262,7 +311,7 @@ class GpuTranscriber:
             process.wait()
 
             if process.returncode != 0:
-                raise RuntimeError(f"whisper.cpp failed with return code {process.returncode}")
+                raise WhisperError(f"whisper.cpp failed with return code {process.returncode}")
 
             segments = self._parse_output(''.join(output_lines))
             for segment in segments:
@@ -279,23 +328,18 @@ class GpuTranscriber:
         return list(self.transcribe(audio_path, language, show_progress, debug))
 
 
-class Transcriber:
-    """Wrapper for faster-whisper transcription with optimizations."""
-
-    VALID_MODELS = ["tiny", "base", "small", "medium", "large-v3", "turbo"]
+class CpuTranscriber(BaseTranscriber):
+    """CPU-based transcription using faster-whisper with optimizations."""
 
     def __init__(self, model_size: str = "large-v3", device: str = "cpu"):
         """
-        Initialize the transcriber.
+        Initialize the CPU transcriber.
 
         Args:
             model_size: Model to use. Options: tiny, base, small, medium, large-v3, turbo
             device: Device to run on. Currently only "cpu" supported.
         """
-        if model_size not in self.VALID_MODELS:
-            raise ValueError(f"Invalid model: {model_size}. Valid: {self.VALID_MODELS}")
-
-        self.model_size = model_size
+        super().__init__(model_size)
         self.device = device
         self._model = None
 
@@ -355,9 +399,9 @@ class Transcriber:
                 text=segment.text.strip()
             )
 
-    def transcribe_to_list(self, audio_path: str | Path, language: str = None) -> list[TranscriptSegment]:
-        """Transcribe and return all segments as a list."""
-        return list(self.transcribe(audio_path, language))
+
+# Backward compatibility alias
+Transcriber = CpuTranscriber
 
 
 def format_time(seconds: float) -> str:

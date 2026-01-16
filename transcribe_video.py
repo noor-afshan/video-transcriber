@@ -160,11 +160,13 @@ def transcribe_video(
             enable_diarization = False
 
     # Step 3: Merge transcription with speakers
+    from modules.diarizer import assign_speakers_to_transcript, segments_without_speakers
+
     if enable_diarization and speaker_segments:
         merged = assign_speakers_to_transcript(transcript_segments, speaker_segments)
     else:
         # No diarization - use "Speaker" for all
-        merged = [("Speaker", seg.start, seg.end, seg.text) for seg in transcript_segments]
+        merged = segments_without_speakers(transcript_segments)
 
     # Step 4: Clean up
     if enable_cleanup:
@@ -187,17 +189,17 @@ def transcribe_video(
     file_lines = []
     prev_speaker = None
 
-    for speaker, start, end, text in merged:
-        timestamp = f"[{format_time(start)} -> {format_time(end)}]"
-        line = f"{timestamp} {speaker}: {text}"
+    for seg in merged:
+        timestamp = f"[{format_time(seg.start)} -> {format_time(seg.end)}]"
+        line = f"{timestamp} {seg.speaker}: {seg.text}"
         print(line)
         output_lines.append(line)
 
         # For file output: group by speaker, add blank line on speaker change
-        if prev_speaker and prev_speaker != speaker:
+        if prev_speaker and prev_speaker != seg.speaker:
             file_lines.append("")
-        file_lines.append(f"{speaker}: {text}")
-        prev_speaker = speaker
+        file_lines.append(f"{seg.speaker}: {seg.text}")
+        prev_speaker = seg.speaker
 
     # Save to file (configurable output directory, defaults to input file's directory)
     output_dir = paths_config.get("output_dir")

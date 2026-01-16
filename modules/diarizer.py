@@ -4,6 +4,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from .types import DiarizedSegment
+
 
 @dataclass
 class SpeakerSegment:
@@ -121,7 +123,7 @@ def get_speaker_at_time(segments: list[SpeakerSegment], timestamp: float) -> str
 def assign_speakers_to_transcript(
     transcript_segments: list,
     speaker_segments: list[SpeakerSegment]
-) -> list[tuple]:
+) -> list[DiarizedSegment]:
     """
     Merge transcript segments with speaker labels.
 
@@ -132,7 +134,7 @@ def assign_speakers_to_transcript(
         speaker_segments: List of SpeakerSegment from diarizer
 
     Returns:
-        List of (speaker, start, end, text) tuples
+        List of DiarizedSegment with speaker attribution
     """
     results = []
 
@@ -141,6 +143,34 @@ def assign_speakers_to_transcript(
         midpoint = (ts.start + ts.end) / 2
         speaker = get_speaker_at_time(speaker_segments, midpoint)
 
-        results.append((speaker, ts.start, ts.end, ts.text))
+        results.append(DiarizedSegment(
+            start=ts.start,
+            end=ts.end,
+            text=ts.text,
+            speaker=speaker,
+        ))
 
     return results
+
+
+def segments_without_speakers(transcript_segments: list) -> list[DiarizedSegment]:
+    """
+    Convert transcript segments to DiarizedSegments without speaker identification.
+
+    Use this when diarization is disabled or unavailable.
+
+    Args:
+        transcript_segments: List of TranscriptSegment from transcriber
+
+    Returns:
+        List of DiarizedSegment with speaker set to "Speaker"
+    """
+    return [
+        DiarizedSegment(
+            start=ts.start,
+            end=ts.end,
+            text=ts.text,
+            speaker="Speaker",
+        )
+        for ts in transcript_segments
+    ]
