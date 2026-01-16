@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.2.0 - January 15, 2026
+
+### Architecture
+
+- **Type-safe pipeline**: New `DiarizedSegment` dataclass replaces untyped tuples throughout the pipeline
+- **Abstract transcriber**: `BaseTranscriber` ABC enables cleaner GPU/CPU backend switching
+- **Composable pipeline**: New `TranscriptionPipeline` with `TranscribeStage`, `DiarizeStage`, `CleanupStage`
+- **Typed configuration**: `TranscribeConfig`, `PathsConfig`, `CleanupConfig` dataclasses with validation
+
+### Added
+
+- **Custom exceptions**: 13-class hierarchy (`TranscribeError`, `ModelNotFoundError`, `AudioConversionError`, etc.)
+- **Pipeline API**: Fluent builder pattern for composing transcription workflows
+- **Test suite**: 157 pytest tests covering all modules
+- **Expanded exports**: Public API grew from 3 to 36 items
+
+### Changed
+
+- **Transcriber renamed**: `Transcriber` → `CpuTranscriber` (alias maintained for backward compatibility)
+- **Diarizer output**: Returns `DiarizedSegment` objects instead of tuples
+- **Cleaner type hints**: Full type annotations for `DiarizedSegment`
+
+### Developer Experience
+
+- Factory function `create_default_pipeline()` for common use cases
+- `DiarizedSegment.to_tuple()`/`from_tuple()` for migration support
+- Lazy imports in pipeline stages for fast CLI startup
+
+---
+
 ## v1.1.0 - January 11, 2026
 
 ### Security
