@@ -1,0 +1,9 @@
+# Core dependencies
+faster-whisper>=1.0.0
+pyannote.audio>=3.1.0
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# Dev dependencies
+pytest>=8.0.0
+ruff>=0.4.0

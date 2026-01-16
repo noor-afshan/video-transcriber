@@ -59,6 +59,22 @@ config.json               # Settings (HF token, model, cleanup options)
 - **Console**: `[HH:MM:SS -> HH:MM:SS] Speaker 1: text`
 - **File**: Saved to `C:\Users\piers\Videos\Captures\{filename}.txt`
 
+## Development
+
+```bash
+# Activate virtual environment
+.venv\Scripts\activate
+
+# Type check (like C# build)
+.venv\Scripts\pyright.exe .
+
+# Lint check
+.venv\Scripts\ruff.exe check .
+
+# Run tests
+.venv\Scripts\pytest.exe tests -v
+```
+
 ## User Guide
 
 See `docs/` folder for full usage documentation including OBS setup, CLI options, troubleshooting, and workflow.

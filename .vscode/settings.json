@@ -1,0 +1,20 @@
+{
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    // Type checking (like C# compiler errors)
+    "python.analysis.typeCheckingMode": "standard",
+    "python.analysis.diagnosticMode": "workspace",  // Analyze all files, not just open ones
+    // Format on save with Ruff
+    "editor.formatOnSave": true,
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    // Use project venv
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe"
+}

@@ -16,6 +16,12 @@ Complete setup instructions for Transcribe.
 ```bash
 git clone https://github.com/piersrobcoleman/video-transcriber.git
 cd video-transcriber
+
+# Create virtual environment (recommended)
+python -m venv .venv
+.venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -171,6 +177,43 @@ Enable right-click transcription and frame extraction:
 2. Run `extract-frames-context-menu.reg` (adds "Extract Frames" to video context menu)
 
 To remove, run the corresponding `-uninstall.reg` files.
+
+## Development Setup
+
+For contributors or those wanting type checking and linting:
+
+### VS Code (Recommended)
+
+1. **Install extensions:**
+   - Python (Microsoft)
+   - Pylance (Microsoft)
+   - Ruff (Astral Software)
+   - Error Lens (optional, shows errors inline)
+
+2. **Open the project** - VS Code will detect `.venv` automatically
+
+3. **Verify setup:**
+   ```bash
+   # Type checking (like a build)
+   .venv\Scripts\pyright.exe .
+
+   # Linting
+   .venv\Scripts\ruff.exe check .
+
+   # Run tests
+   .venv\Scripts\pytest.exe tests
+   ```
+
+### Dev Dependencies
+
+The `requirements.txt` includes dev tools:
+- `pytest` - Testing framework
+- `ruff` - Linter and formatter
+
+Type checking (pyright) can be installed separately:
+```bash
+pip install pyright
+```
 
 ## Troubleshooting
 
